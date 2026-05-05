@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>管理后台</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background: #f4f4f4; }
+    </style>
+</head>
+<body>
+    <h2>管理后台 - 已注册用户</h2>
+    <button onclick="location.href='index.html'">返回首页</button>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>用户 ID</th>
+                <th>邮箱</th>
+                <th>注册日期</th>
+            </tr>
+        </thead>
+        <tbody id="user-list">
+            <tr><td colspan="3">正在加载用户数据...</td></tr>
+        </tbody>
+    </table>
+
+    <script type="module">
+        import { supabase } from './config.js';
+
+        async function fetchUsers() {
+            // 安全检查：只有登录用户能看
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                alert("请先登录！");
+                location.href = 'login.html';
+                return;
+            }
+
+            // 从 profiles 表读取
+            const { data, error } = await supabase.from('profiles').select('*');
+            
+            if (error) {
+                console.error(error);
+                return;
+            }
+
+            const tbody = document.getElementById('user-list');
+            tbody.innerHTML = ''; // 清空加载提示
+
+            data.forEach(item => {
+                const row = `<tr>
+                    <td>${item.id}</td>
+                    <td>${item.email}</td>
+                    <td>${new Date(item.created_at).toLocaleString()}</td>
+                </tr>`;
+                tbody.innerHTML += row;
+            });
+        }
+
+        fetchUsers();
+    </script>
+</body>
+</html>
