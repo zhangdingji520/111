@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理员后台 - 用户列表</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { box-sizing: border-box; font-family: system-ui, sans-serif; }
+        body { background: #1e293b; margin: 0; padding: 24px; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; border-radius: 28px; padding: 28px; box-shadow: 0 20px 35px rgba(0,0,0,0.2); }
+        h1 { margin-top: 0; color: #0f172a; display: flex; align-items: center; gap: 12px; }
+        .lock-icon { font-size: 28px; }
+        .auth-box { background: #f8fafc; padding: 24px; border-radius: 24px; text-align: center; margin-bottom: 28px; }
+        input { padding: 12px; width: 250px; border: 1px solid #cbd5e1; border-radius: 40px; margin-right: 10px; font-size: 16px; }
+        button { background: #3b82f6; border: none; color: white; padding: 12px 24px; border-radius: 40px; font-weight: bold; cursor: pointer; }
+        button:hover { background: #2563eb; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #e2e8f0; }
+        th { background: #f1f5f9; font-weight: 600; color: #334155; }
+        .badge { background: #e6f0ff; color: #1e40af; padding: 4px 10px; border-radius: 40px; font-size: 13px; display: inline-block; }
+        .hidden { display: none; }
+        .error-msg { color: #dc2626; margin-top: 12px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>
+        <span class="lock-icon">🔐</span> 用户管理后台
+    </h1>
+
+    <!-- 密码验证区域 -->
+    <div id="passwordGate" class="auth-box">
+        <p style="margin-bottom: 16px;">请输入管理员密码以查看所有注册用户</p>
+        <input type="password" id="adminPassword" placeholder="管理密码">
+        <button id="verifyBtn">验证并加载</button>
+        <div id="pwdError" class="error-msg"></div>
+    </div>
+
+    <!-- 用户列表区域（初始隐藏） -->
+    <div id="userListArea" class="hidden">
+        <p>✅ 当前注册用户总数：<span id="totalCount">0</span> 人</p>
+        <div style="overflow-x: auto;">
+            <table id="userTable">
+                <thead>
+                    <tr><th>用户ID（前8位）</th><th>邮箱</th><th>昵称</th><th>注册时间</th></tr>
+                </thead>
+                <tbody id="userTableBody">
+                    <tr><td colspan="4">加载中...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ---------- 🔧 同样的 Supabase 配置 ----------
+    const SUPABASE_URL = "https://hntioocpuhbrwiuvdify.supabase.co/rest/v1/";
+    const SUPABASE_ANON_KEY = "process.env.SUPABASE_KEY";
+    // 预设的管理员密码（你可以自己改）
+    const ADMIN_PASSWORD = "admin123";
+    // --------------------------------------------
+
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const passwordGate = document.getElementById('passwordGate');
+    const userListArea = document.getElementById('userListArea');
+    const pwdError = document.getElementById('pwdError');
+
+    document.getElementById('verifyBtn').addEventListener('click', async () => {
+        const enteredPassword = document.getElementById('adminPassword').value;
+        if (enteredPassword !== ADMIN_PASSWORD) {
+            pwdError.innerText = '密码错误，拒绝访问';
+            return;
+        }
+        pwdError.innerText = '';
+        // 密码正确，加载用户列表
+        await loadAllUsers();
+        passwordGate.classList.add('hidden');
+        userListArea.classList.remove('hidden');
+    });
+
+    async function loadAllUsers() {
+        const tbody = document.getElementById('userTableBody');
+        tbody.innerHTML = '<tr><td colspan="4">正在获取用户数据...</td></tr>';
+
+        // 从 profiles 表查询所有用户，按注册时间倒序
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('id, email, nickname, created_at')
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            tbody.innerHTML = `<tr><td colspan="4">加载失败: ${error.message}</td></tr>`;
+            return;
+        }
+
+        document.getElementById('totalCount').innerText = data.length;
+        if (data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4">暂无注册用户</td></tr>';
+            return;
+        }
+
+        // 渲染表格
+        tbody.innerHTML = '';
+        data.forEach(user => {
+            const row = tbody.insertRow();
+            const shortId = user.id.substring(0, 8) + '...';
+            const date = new Date(user.created_at).toLocaleString('zh-CN');
+            row.insertCell(0).innerHTML = `<span class="badge">${shortId}</span>`;
+            row.insertCell(1).innerText = user.email;
+            row.insertCell(2).innerText = user.nickname || '未设置';
+            row.insertCell(3).innerText = date;
+        });
+    }
+</script>
+</body>
+</html>
