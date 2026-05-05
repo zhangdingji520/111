@@ -36,7 +36,6 @@
         <button class="tab" data-tab="register">注册</button>
     </div>
 
-    <!-- 登录表单 -->
     <div id="loginForm" class="form-container">
         <div class="form-group">
             <label>邮箱</label>
@@ -49,7 +48,6 @@
         <button id="doLogin">登录</button>
     </div>
 
-    <!-- 注册表单 -->
     <div id="registerForm" class="form-container hidden">
         <div class="form-group">
             <label>昵称</label>
@@ -73,14 +71,12 @@
 </div>
 
 <script>
-    // ---------- 🔧 替换成你自己的 Supabase 配置 ----------
-    const SUPABASE_URL = "https://hntioocpuhbrwiuvdify.supabase.co/rest/v1/";
-    const SUPABASE_ANON_KEY = "process.env.SUPABASE_KEY";
-    // ---------------------------------------------------
+    // 你的 Supabase 配置（已修正）
+    const SUPABASE_URL = "https://hntioocpuhbrwiuvdify.supabase.co";   // 不要加 /rest/v1/
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhudGlvb2NwdWhicndpdXZkaWZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5OTUwNDIsImV4cCI6MjA5MzU3MTA0Mn0.3kLSZV1scyC89dWVXPi0PZAg7jWVUDG6psHLNUKgvKo";
 
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // UI 元素
     const loginDiv = document.getElementById('loginForm');
     const registerDiv = document.getElementById('registerForm');
     const tabs = document.querySelectorAll('.tab');
@@ -93,7 +89,6 @@
         setTimeout(() => msgBox.classList.add('hidden'), 4000);
     }
 
-    // 切换注册/登录
     tabs.forEach(tab => {
         tab.addEventListener('click', () => {
             const target = tab.dataset.tab;
@@ -109,7 +104,6 @@
         });
     });
 
-    // 注册
     document.getElementById('doRegister').addEventListener('click', async () => {
         const nickname = document.getElementById('regNickname').value.trim();
         const email = document.getElementById('regEmail').value.trim();
@@ -124,26 +118,21 @@
             return;
         }
 
-        // 1. 用 Supabase Auth 注册
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-            email, password
-        });
+        const { data: authData, error: authError } = await supabase.auth.signUp({ email, password });
         if (authError) {
             showMessage(authError.message);
             return;
         }
         const userId = authData.user.id;
 
-        // 2. 往 profiles 表写入昵称
         const { error: profileError } = await supabase
             .from('profiles')
             .insert([{ id: userId, email: email, nickname: nickname }]);
 
         if (profileError) {
-            showMessage('注册成功但资料保存失败，请联系管理员' + profileError.message);
+            showMessage('注册成功但资料保存失败: ' + profileError.message);
         } else {
             showMessage('注册成功！请登录', 'success');
-            // 清空表单并切换到登录
             document.getElementById('regNickname').value = '';
             document.getElementById('regEmail').value = '';
             document.getElementById('regPassword').value = '';
@@ -151,7 +140,6 @@
         }
     });
 
-    // 登录
     document.getElementById('doLogin').addEventListener('click', async () => {
         const email = document.getElementById('loginEmail').value.trim();
         const password = document.getElementById('loginPassword').value;
@@ -159,24 +147,18 @@
             showMessage('请输入邮箱和密码');
             return;
         }
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) {
             showMessage(error.message);
             return;
         }
         showMessage('登录成功！欢迎 ' + email, 'success');
-        // 可选：跳转或展示用户状态，这里简单显示一下
-        setTimeout(() => {
-            alert('登录成功，你可以去后台查看用户列表了');
-        }, 500);
+        setTimeout(() => alert('登录成功，你可以去后台查看用户列表了'), 500);
     });
 
-    // 检查是否已登录（可选，方便调试）
     async function checkSession() {
         const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-            showMessage(`当前已登录: ${session.user.email}`, 'info');
-        }
+        if (session) showMessage(`当前已登录: ${session.user.email}`, 'info');
     }
     checkSession();
 </script>
