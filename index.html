@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>注册登录演示</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { box-sizing: border-box; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+        body { background: #f0f2f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; }
+        .card { max-width: 450px; width: 100%; background: white; border-radius: 24px; padding: 32px; box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
+        h1 { text-align: center; margin-bottom: 28px; color: #1e293b; font-size: 28px; }
+        .tabs { display: flex; gap: 12px; margin-bottom: 28px; border-bottom: 1px solid #e2e8f0; }
+        .tab { flex: 1; text-align: center; padding: 10px; cursor: pointer; background: none; border: none; font-size: 18px; font-weight: 500; color: #64748b; transition: 0.2s; }
+        .tab.active { color: #3b82f6; border-bottom: 2px solid #3b82f6; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-weight: 500; color: #334155; }
+        input { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 12px; font-size: 16px; outline: none; transition: 0.2s; }
+        input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+        button { width: 100%; background: #3b82f6; color: white; border: none; padding: 12px; border-radius: 40px; font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 8px; transition: 0.2s; }
+        button:hover { background: #2563eb; }
+        .message { margin-top: 16px; padding: 12px; border-radius: 12px; text-align: center; font-size: 14px; }
+        .error { background: #fee2e2; color: #dc2626; }
+        .success { background: #dcfce7; color: #15803d; }
+        .info { background: #e6f0ff; color: #1e40af; }
+        .hidden { display: none; }
+        footer { text-align: center; margin-top: 24px; font-size: 13px; color: #94a3b8; }
+        a { color: #3b82f6; text-decoration: none; }
+    </style>
+</head>
+<body>
+<div class="card">
+    <h1>📝 用户中心</h1>
+    <div class="tabs">
+        <button class="tab active" data-tab="login">登录</button>
+        <button class="tab" data-tab="register">注册</button>
+    </div>
+
+    <!-- 登录表单 -->
+    <div id="loginForm" class="form-container">
+        <div class="form-group">
+            <label>邮箱</label>
+            <input type="email" id="loginEmail" placeholder="your@email.com">
+        </div>
+        <div class="form-group">
+            <label>密码</label>
+            <input type="password" id="loginPassword" placeholder="******">
+        </div>
+        <button id="doLogin">登录</button>
+    </div>
+
+    <!-- 注册表单 -->
+    <div id="registerForm" class="form-container hidden">
+        <div class="form-group">
+            <label>昵称</label>
+            <input type="text" id="regNickname" placeholder="如何称呼你">
+        </div>
+        <div class="form-group">
+            <label>邮箱</label>
+            <input type="email" id="regEmail" placeholder="your@email.com">
+        </div>
+        <div class="form-group">
+            <label>密码</label>
+            <input type="password" id="regPassword" placeholder="至少6位">
+        </div>
+        <button id="doRegister">注册</button>
+    </div>
+
+    <div id="statusMsg" class="message hidden"></div>
+    <footer>
+        <a href="admin.html" target="_blank">🔒 管理员后台</a>
+    </footer>
+</div>
+
+<script>
+    // ---------- 🔧 替换成你自己的 Supabase 配置 ----------
+    const SUPABASE_URL = "https://hntioocpuhbrwiuvdify.supabase.co/rest/v1/";
+    const SUPABASE_ANON_KEY = "process.env.SUPABASE_KEY";
+    // ---------------------------------------------------
+
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // UI 元素
+    const loginDiv = document.getElementById('loginForm');
+    const registerDiv = document.getElementById('registerForm');
+    const tabs = document.querySelectorAll('.tab');
+    const msgBox = document.getElementById('statusMsg');
+
+    function showMessage(text, type = 'error') {
+        msgBox.textContent = text;
+        msgBox.className = `message ${type}`;
+        msgBox.classList.remove('hidden');
+        setTimeout(() => msgBox.classList.add('hidden'), 4000);
+    }
+
+    // 切换注册/登录
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            const target = tab.dataset.tab;
+            tabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            if (target === 'login') {
+                loginDiv.classList.remove('hidden');
+                registerDiv.classList.add('hidden');
+            } else {
+                loginDiv.classList.add('hidden');
+                registerDiv.classList.remove('hidden');
+            }
+        });
+    });
+
+    // 注册
+    document.getElementById('doRegister').addEventListener('click', async () => {
+        const nickname = document.getElementById('regNickname').value.trim();
+        const email = document.getElementById('regEmail').value.trim();
+        const password = document.getElementById('regPassword').value;
+
+        if (!nickname || !email || !password) {
+            showMessage('请填写完整信息');
+            return;
+        }
+        if (password.length < 6) {
+            showMessage('密码至少6位');
+            return;
+        }
+
+        // 1. 用 Supabase Auth 注册
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+            email, password
+        });
+        if (authError) {
+            showMessage(authError.message);
+            return;
+        }
+        const userId = authData.user.id;
+
+        // 2. 往 profiles 表写入昵称
+        const { error: profileError } = await supabase
+            .from('profiles')
+            .insert([{ id: userId, email: email, nickname: nickname }]);
+
+        if (profileError) {
+            showMessage('注册成功但资料保存失败，请联系管理员' + profileError.message);
+        } else {
+            showMessage('注册成功！请登录', 'success');
+            // 清空表单并切换到登录
+            document.getElementById('regNickname').value = '';
+            document.getElementById('regEmail').value = '';
+            document.getElementById('regPassword').value = '';
+            document.querySelector('.tab[data-tab="login"]').click();
+        }
+    });
+
+    // 登录
+    document.getElementById('doLogin').addEventListener('click', async () => {
+        const email = document.getElementById('loginEmail').value.trim();
+        const password = document.getElementById('loginPassword').value;
+        if (!email || !password) {
+            showMessage('请输入邮箱和密码');
+            return;
+        }
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) {
+            showMessage(error.message);
+            return;
+        }
+        showMessage('登录成功！欢迎 ' + email, 'success');
+        // 可选：跳转或展示用户状态，这里简单显示一下
+        setTimeout(() => {
+            alert('登录成功，你可以去后台查看用户列表了');
+        }, 500);
+    });
+
+    // 检查是否已登录（可选，方便调试）
+    async function checkSession() {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+            showMessage(`当前已登录: ${session.user.email}`, 'info');
+        }
+    }
+    checkSession();
+</script>
+</body>
+</html>
