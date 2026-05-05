@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>注册</title>
+    <style>body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 50px; } input { margin: 10px; padding: 8px; width: 250px; }</style>
+</head>
+<body>
+    <h2>账号注册</h2>
+    <input type="email" id="email" placeholder="邮箱地址">
+    <input type="password" id="password" placeholder="设置密码 (至少6位)">
+    <button id="reg-btn">立即注册</button>
+    <p id="msg"></p>
+    <a href="index.html">返回首页</a>
+
+    <script type="module">
+        import { supabase } from './config.js';
+
+        document.getElementById('reg-btn').addEventListener('click', async () => {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const msg = document.getElementById('msg');
+
+            msg.innerText = "处理中...";
+
+            // 1. 注册到 Auth
+            const { data, error } = await supabase.auth.signUp({ email, password });
+
+            if (error) {
+                msg.innerText = "错误: " + error.message;
+                return;
+            }
+
+            // 2. 将用户信息存入 profiles 表供后台查看
+            if (data.user) {
+                await supabase.from('profiles').insert([{ id: data.user.id, email: data.user.email }]);
+                msg.innerText = "注册成功！请直接登录。";
+            }
+        });
+    </script>
+</body>
+</html>
