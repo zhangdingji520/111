@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>系统主页</title>
+    <style>body { font-family: sans-serif; padding: 40px; text-align: center; }</style>
+</head>
+<body>
+    <h1>欢迎来到我的系统</h1>
+    
+    <div id="loading">检查登录状态...</div>
+
+    <div id="unauth-div" style="display:none;">
+        <a href="login.html">去登录</a> | <a href="register.html">去注册</a>
+    </div>
+
+    <div id="auth-div" style="display:none;">
+        <p>你好，<span id="user-email"></span></p>
+        <button onclick="location.href='admin.html'">进入后台管理</button>
+        <button id="logout-btn">退出登录</button>
+    </div>
+
+    <script type="module">
+        import { supabase } from './config.js';
+
+        async function init() {
+            const { data: { user } } = await supabase.auth.getUser();
+            document.getElementById('loading').style.display = 'none';
+            
+            if (user) {
+                document.getElementById('auth-div').style.display = 'block';
+                document.getElementById('user-email').innerText = user.email;
+            } else {
+                document.getElementById('unauth-div').style.display = 'block';
+            }
+        }
+
+        document.getElementById('logout-btn')?.addEventListener('click', async () => {
+            await supabase.auth.signOut();
+            window.location.reload();
+        });
+
+        init();
+    </script>
+</body>
+</html>
