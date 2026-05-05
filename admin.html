@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>管理员后台 - 用户列表</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <title>管理员后台 - 用户列表（本地版）</title>
     <style>
         * { box-sizing: border-box; font-family: system-ui, sans-serif; }
         body { background: #1e293b; margin: 0; padding: 24px; }
@@ -25,7 +24,7 @@
 </head>
 <body>
 <div class="container">
-    <h1><span class="lock-icon">🔐</span> 用户管理后台</h1>
+    <h1><span class="lock-icon">🔐</span> 用户管理后台（本地版）</h1>
 
     <div id="passwordGate" class="auth-box">
         <p>请输入管理员密码以查看所有注册用户</p>
@@ -46,51 +45,36 @@
 </div>
 
 <script>
-    // 你的 Supabase 配置（已修正）
-    const SUPABASE_URL = "https://hntioocpuhbrwiuvdify.supabase.co";   // 不要加 /rest/v1/
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhudGlvb2NwdWhicndpdXZkaWZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5OTUwNDIsImV4cCI6MjA5MzU3MTA0Mn0.3kLSZV1scyC89dWVXPi0PZAg7jWVUDG6psHLNUKgvKo";
-    const ADMIN_PASSWORD = "admin123";   // 可修改
+    const ADMIN_PASSWORD = "admin123";
 
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    function loadUsers() {
+        const users = localStorage.getItem("registered_users");
+        return users ? JSON.parse(users) : [];
+    }
 
-    const passwordGate = document.getElementById('passwordGate');
-    const userListArea = document.getElementById('userListArea');
-    const pwdError = document.getElementById('pwdError');
-
-    document.getElementById('verifyBtn').addEventListener('click', async () => {
-        const enteredPassword = document.getElementById('adminPassword').value;
-        if (enteredPassword !== ADMIN_PASSWORD) {
-            pwdError.innerText = '密码错误，拒绝访问';
+    document.getElementById('verifyBtn').addEventListener('click', () => {
+        const entered = document.getElementById('adminPassword').value;
+        if (entered !== ADMIN_PASSWORD) {
+            document.getElementById('pwdError').innerText = '密码错误，拒绝访问';
             return;
         }
-        pwdError.innerText = '';
-        await loadAllUsers();
-        passwordGate.classList.add('hidden');
-        userListArea.classList.remove('hidden');
+        document.getElementById('pwdError').innerText = '';
+        document.getElementById('passwordGate').classList.add('hidden');
+        document.getElementById('userListArea').classList.remove('hidden');
+        displayUsers();
     });
 
-    async function loadAllUsers() {
+    function displayUsers() {
+        const users = loadUsers();
         const tbody = document.getElementById('userTableBody');
-        tbody.innerHTML = '<tr><td colspan="4">正在获取用户数据...</td></tr>';
-
-        const { data, error } = await supabase
-            .from('profiles')
-            .select('id, email, nickname, created_at')
-            .order('created_at', { ascending: false });
-
-        if (error) {
-            tbody.innerHTML = `<tr><td colspan="4">加载失败: ${error.message}</td></tr>`;
-            return;
-        }
-
-        document.getElementById('totalCount').innerText = data.length;
-        if (data.length === 0) {
+        const totalSpan = document.getElementById('totalCount');
+        totalSpan.innerText = users.length;
+        if (users.length === 0) {
             tbody.innerHTML = '<tr><td colspan="4">暂无注册用户</td></tr>';
             return;
         }
-
         tbody.innerHTML = '';
-        data.forEach(user => {
+        users.forEach(user => {
             const row = tbody.insertRow();
             const shortId = user.id.substring(0, 8) + '...';
             const date = new Date(user.created_at).toLocaleString('zh-CN');
