@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>登录</title>
+    <style>body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 50px; } input { margin: 10px; padding: 8px; width: 250px; }</style>
+</head>
+<body>
+    <h2>欢迎回来</h2>
+    <input type="email" id="email" placeholder="邮箱">
+    <input type="password" id="password" placeholder="密码">
+    <button id="login-btn">登录</button>
+    <p id="msg"></p>
+    <a href="index.html">返回首页</a>
+
+    <script type="module">
+        import { supabase } from './config.js';
+
+        document.getElementById('login-btn').addEventListener('click', async () => {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const msg = document.getElementById('msg');
+
+            const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+            if (error) {
+                msg.innerText = "登录失败: " + error.message;
+            } else {
+                msg.innerText = "成功，正在跳转...";
+                setTimeout(() => location.href = 'index.html', 1000);
+            }
+        });
+    </script>
+</body>
+</html>
