@@ -23,9 +23,12 @@
         .error { background: #fee2e2; color: #dc2626; }
         .success { background: #dcfce7; color: #15803d; }
         .info { background: #e6f0ff; color: #1e40af; }
+        .warning { background: #ffedd5; color: #b45309; }
         .hidden { display: none; }
         footer { text-align: center; margin-top: 24px; font-size: 13px; color: #94a3b8; }
         a { color: #3b82f6; text-decoration: none; }
+        .test-btn { background: #64748b; margin-top: 8px; }
+        .test-btn:hover { background: #475569; }
     </style>
 </head>
 <body>
@@ -65,29 +68,40 @@
     </div>
 
     <div id="statusMsg" class="message hidden"></div>
+    <button id="testConnection" class="test-btn">🔧 测试 Supabase 连接</button>
     <footer>
         <a href="admin.html" target="_blank">🔒 管理员后台</a>
     </footer>
 </div>
 
 <script>
-    // 你的 Supabase 配置（已修正）
-    const SUPABASE_URL = "https://hntioocpuhbrwiuvdify.supabase.co";   // 不要加 /rest/v1/
+    // ---------- 你的 Supabase 配置 ----------
+    const SUPABASE_URL = "https://hntioocpuhbrwiuvdify.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhudGlvb2NwdWhicndpdXZkaWZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5OTUwNDIsImV4cCI6MjA5MzU3MTA0Mn0.3kLSZV1scyC89dWVXPi0PZAg7jWVUDG6psHLNUKgvKo";
+    // -------------------------------------------
 
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-    const loginDiv = document.getElementById('loginForm');
-    const registerDiv = document.getElementById('registerForm');
-    const tabs = document.querySelectorAll('.tab');
-    const msgBox = document.getElementById('statusMsg');
-
+    // 全局显示消息
     function showMessage(text, type = 'error') {
+        const msgBox = document.getElementById('statusMsg');
         msgBox.textContent = text;
         msgBox.className = `message ${type}`;
         msgBox.classList.remove('hidden');
-        setTimeout(() => msgBox.classList.add('hidden'), 4000);
+        setTimeout(() => msgBox.classList.add('hidden'), 8000);
     }
+
+    // 初始化 Supabase
+    let supabase;
+    try {
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        showMessage('Supabase 初始化成功', 'success');
+    } catch (err) {
+        showMessage('初始化失败：' + err.message, 'error');
+    }
+
+    // UI 元素
+    const loginDiv = document.getElementById('loginForm');
+    const registerDiv = document.getElementById('registerForm');
+    const tabs = document.querySelectorAll('.tab');
 
     tabs.forEach(tab => {
         tab.addEventListener('click', () => {
@@ -104,6 +118,7 @@
         });
     });
 
+    // 注册
     document.getElementById('doRegister').addEventListener('click', async () => {
         const nickname = document.getElementById('regNickname').value.trim();
         const email = document.getElementById('regEmail').value.trim();
@@ -118,49 +133,96 @@
             return;
         }
 
-        const { data: authData, error: authError } = await supabase.auth.signUp({ email, password });
-        if (authError) {
-            showMessage(authError.message);
+        if (!supabase) {
+            showMessage('Supabase 未初始化，请刷新页面重试', 'error');
             return;
         }
-        const userId = authData.user.id;
 
-        const { error: profileError } = await supabase
-            .from('profiles')
-            .insert([{ id: userId, email: email, nickname: nickname }]);
+        try {
+            // 1. 注册
+            const { data: authData, error: authError } = await supabase.auth.signUp({ email, password });
+            if (authError) {
+                showMessage('注册失败：' + authError.message);
+                return;
+            }
+            const userId = authData.user.id;
 
-        if (profileError) {
-            showMessage('注册成功但资料保存失败: ' + profileError.message);
-        } else {
-            showMessage('注册成功！请登录', 'success');
-            document.getElementById('regNickname').value = '';
-            document.getElementById('regEmail').value = '';
-            document.getElementById('regPassword').value = '';
-            document.querySelector('.tab[data-tab="login"]').click();
+            // 2. 保存到 profiles 表
+            const { error: profileError } = await supabase
+                .from('profiles')
+                .insert([{ id: userId, email: email, nickname: nickname }]);
+
+            if (profileError) {
+                showMessage('注册成功但保存昵称失败：' + profileError.message, 'warning');
+            } else {
+                showMessage('注册成功！请登录', 'success');
+                // 清空表单
+                document.getElementById('regNickname').value = '';
+                document.getElementById('regEmail').value = '';
+                document.getElementById('regPassword').value = '';
+                document.querySelector('.tab[data-tab="login"]').click();
+            }
+        } catch (err) {
+            showMessage('注册过程出错：' + err.message, 'error');
         }
     });
 
+    // 登录
     document.getElementById('doLogin').addEventListener('click', async () => {
         const email = document.getElementById('loginEmail').value.trim();
         const password = document.getElementById('loginPassword').value;
+
         if (!email || !password) {
             showMessage('请输入邮箱和密码');
             return;
         }
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) {
-            showMessage(error.message);
+
+        if (!supabase) {
+            showMessage('Supabase 未初始化，请刷新页面重试', 'error');
             return;
         }
-        showMessage('登录成功！欢迎 ' + email, 'success');
-        setTimeout(() => alert('登录成功，你可以去后台查看用户列表了'), 500);
+
+        try {
+            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+            if (error) {
+                showMessage('登录失败：' + error.message);
+                return;
+            }
+            showMessage('登录成功！欢迎 ' + email, 'success');
+            setTimeout(() => alert('登录成功，你可以去后台查看用户列表了'), 500);
+        } catch (err) {
+            showMessage('登录请求异常：' + err.message, 'error');
+        }
     });
 
-    async function checkSession() {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) showMessage(`当前已登录: ${session.user.email}`, 'info');
-    }
-    checkSession();
+    // 测试连接按钮
+    document.getElementById('testConnection').addEventListener('click', async () => {
+        if (!supabase) {
+            showMessage('Supabase 客户端未初始化，请检查 URL 和 Key', 'error');
+            return;
+        }
+        showMessage('正在测试 Supabase 连接...', 'info');
+        try {
+            // 尝试获取当前会话，不依赖登录
+            const { data, error } = await supabase.auth.getSession();
+            if (error) {
+                showMessage('连接失败：' + error.message, 'error');
+            } else {
+                showMessage('连接成功！当前会话：' + (data.session ? '已登录' : '未登录'), 'success');
+            }
+        } catch (err) {
+            showMessage('测试失败：' + err.message, 'error');
+        }
+    });
+
+    // 页面加载完成后再检查一次
+    window.addEventListener('load', () => {
+        if (supabase) {
+            console.log("Supabase 就绪");
+        } else {
+            showMessage('警告：Supabase 未能正确初始化，请检查网络或配置', 'warning');
+        }
+    });
 </script>
 </body>
 </html>
