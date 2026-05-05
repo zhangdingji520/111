@@ -25,41 +25,31 @@
 </head>
 <body>
 <div class="container">
-    <h1>
-        <span class="lock-icon">🔐</span> 用户管理后台
-    </h1>
+    <h1><span class="lock-icon">🔐</span> 用户管理后台</h1>
 
-    <!-- 密码验证区域 -->
     <div id="passwordGate" class="auth-box">
-        <p style="margin-bottom: 16px;">请输入管理员密码以查看所有注册用户</p>
+        <p>请输入管理员密码以查看所有注册用户</p>
         <input type="password" id="adminPassword" placeholder="管理密码">
         <button id="verifyBtn">验证并加载</button>
         <div id="pwdError" class="error-msg"></div>
     </div>
 
-    <!-- 用户列表区域（初始隐藏） -->
     <div id="userListArea" class="hidden">
         <p>✅ 当前注册用户总数：<span id="totalCount">0</span> 人</p>
         <div style="overflow-x: auto;">
             <table id="userTable">
-                <thead>
-                    <tr><th>用户ID（前8位）</th><th>邮箱</th><th>昵称</th><th>注册时间</th></tr>
-                </thead>
-                <tbody id="userTableBody">
-                    <tr><td colspan="4">加载中...</td></tr>
-                </tbody>
+                <thead><tr><th>用户ID（前8位）</th><th>邮箱</th><th>昵称</th><th>注册时间</th></tr></thead>
+                <tbody id="userTableBody"><tr><td colspan="4">加载中...</td></tr></tbody>
             </table>
         </div>
     </div>
 </div>
 
 <script>
-    // ---------- 🔧 同样的 Supabase 配置 ----------
-    const SUPABASE_URL = "https://hntioocpuhbrwiuvdify.supabase.co/rest/v1/";
-    const SUPABASE_ANON_KEY = "process.env.SUPABASE_KEY";
-    // 预设的管理员密码（你可以自己改）
-    const ADMIN_PASSWORD = "admin123";
-    // --------------------------------------------
+    // 你的 Supabase 配置（已修正）
+    const SUPABASE_URL = "https://hntioocpuhbrwiuvdify.supabase.co";   // 不要加 /rest/v1/
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhudGlvb2NwdWhicndpdXZkaWZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5OTUwNDIsImV4cCI6MjA5MzU3MTA0Mn0.3kLSZV1scyC89dWVXPi0PZAg7jWVUDG6psHLNUKgvKo";
+    const ADMIN_PASSWORD = "admin123";   // 可修改
 
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -74,7 +64,6 @@
             return;
         }
         pwdError.innerText = '';
-        // 密码正确，加载用户列表
         await loadAllUsers();
         passwordGate.classList.add('hidden');
         userListArea.classList.remove('hidden');
@@ -84,7 +73,6 @@
         const tbody = document.getElementById('userTableBody');
         tbody.innerHTML = '<tr><td colspan="4">正在获取用户数据...</td></tr>';
 
-        // 从 profiles 表查询所有用户，按注册时间倒序
         const { data, error } = await supabase
             .from('profiles')
             .select('id, email, nickname, created_at')
@@ -101,7 +89,6 @@
             return;
         }
 
-        // 渲染表格
         tbody.innerHTML = '';
         data.forEach(user => {
             const row = tbody.insertRow();
